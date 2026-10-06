@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Carby Component: GCVideo 3.1 Flashing Guide</title>
+<meta name="description" content="How to back up the Carby Component cable's firmware and flash GCVideo 3.1 with an FT232H.">
+<meta name="keywords" content="GCVideo, GameCube, Carby Component, FT232H, firmware">
+<link rel="stylesheet" href="guide.css">
+</head>
+<body>
+
+<!-- 1. Cover -->
+<section class="cover">
+  <h1>Carby Component:<br>GCVideo 3.1 Flashing Guide</h1>
+  <p class="lead">How to back up the firmware on an Insurrection Industries Carby Component cable and replace it with GCVideo 3.1, using an FT232H USB board.</p>
+  <img src="../images/result-swiss-menu.jpg" alt="Swiss menu on a CRT through the Carby Component running GCVideo 3.1">
+  <p class="date">October 6, 2026</p>
+  <p class="risk">Proceed at your own risk.</p>
+</section>
+
+<!-- 2. What you need -->
+<section>
+  <h2>What you need</h2>
+  <table>
+    <tr><th style="width:42%">Item</th><th>Note</th></tr>
+    <tr><td>CJMCU FT232H board (or any FT232H breakout)</td><td>The USB board that talks to the cable's flash chip. Pins AD0 to AD4 and GND are used.</td></tr>
+    <tr><td>Six female-to-female jumper wires</td><td>Five go between the FT232H and the cable's J1 header. The sixth (from AD4) is touched to FPGA pin 100 by hand.</td></tr>
+    <tr><td>A thin probe wire or needle</td><td>For touching FPGA pin 100. The pins are very close together, so a fine tip helps.</td></tr>
+    <tr><td>A computer running Linux, or Windows with WSL2 and usbipd-win</td><td>WSL2 runs Linux inside Windows. usbipd-win passes the FT232H from Windows to WSL2.</td></tr>
+    <tr><td>Python 3 with pyftdi</td><td>pyftdi is the Python library the flashing scripts use. Setup is on page 4.</td></tr>
+    <tr><td>The GameCube and the cable</td><td>The console powers the cable, so it stays on while you flash.</td></tr>
+    <tr><td>A TV with component input</td><td>To check the result.</td></tr>
+  </table>
+
+  <h3>Files from this repository</h3>
+  <ul>
+    <li><code>firmware/gcvideo/carby_gcvideo31_final.bin</code>: the GCVideo 3.1 firmware.</li>
+    <li><code>firmware/original/carby_backup.bin</code>: the original firmware, for going back.</li>
+    <li><code>src/flasher/</code>: the scripts <code>dump.py</code>, <code>flashbin.py</code> and <code>restore.py</code>.</li>
+  </ul>
+
+  <div class="box">
+    <p><b>Before you start:</b> this means opening the cable's plug housing and touching a wire to one tiny pin on the FPGA chip while the console is on. Go slowly and keep the wire on that one pin. If something looks wrong at any step, stop and read the "If not" notes on that page.</p>
+  </div>
+</section>
+
+<!-- 3. Know the board -->
+<section>
+  <h2>Know the board</h2>
+  <p>The board sits inside the plug housing at the console end of the cable. Open the housing carefully so you can reach both sides of the board, and keep track of any parts you take off.</p>
+  <figure>
+    <img src="../images/board-fpga-side-annotated.jpg" style="width:4.7in" alt="FPGA side">
+    <figcaption>FPGA side. (1) FPGA U1. (2) Pin 1, by the small triangle. (3) Pin 100 (PROG_B), the leftmost pin of the top row in this view. The J1 pads are labeled on the board: +3.3V, GND, MOSI, CLK, MISO, CS (the square pad).</figcaption>
+  </figure>
+  <figure>
+    <img src="../images/board-dac-side-annotated.jpg" style="width:3.9in" alt="DAC side">
+    <figcaption>Other side. (1) DAC U2. (2) Flash U5. (3) IR receiver U7. (4) Button BU1. J1 has the same left-to-right order on this side.</figcaption>
+  </figure>
+</section>
+
+<!-- 4. Software setup -->
+<section>
+  <h2>Software setup</h2>
+  <h3>Linux (and inside WSL2)</h3>
+  <p>Create a Python virtual environment and install pyftdi. These commands put it in <code>~/ftdi</code>:</p>
+  <pre>python3 -m venv ~/ftdi
+~/ftdi/bin/pip install pyftdi</pre>
+  <p>Get this repository and go into it:</p>
+  <pre>git clone https://github.com/jeff-strutb/carbygcvideo.git
+cd carbygcvideo</pre>
+
+  <h3>Windows: pass the FT232H to WSL2</h3>
+  <p>Install WSL2 (with Ubuntu) and usbipd-win, for example with <code>winget install usbipd</code>. Plug in the FT232H, then open PowerShell <b>as administrator</b>:</p>
+  <pre>usbipd list
+usbipd bind --busid &lt;BUSID&gt;
+usbipd attach --wsl --busid &lt;BUSID&gt;</pre>
+  <p>Use the BUSID shown next to <code>0403:6014</code> in the list. <code>bind</code> is needed only the first time. Run <code>attach</code> again each time you unplug the FT232H or restart.</p>
+
+  <h3>Check the FT232H is visible</h3>
+  <pre>lsusb</pre>
+  <p><b>You should see</b> a line with <code>ID 0403:6014</code> (Future Technology Devices, FT232H).</p>
+  <p><b>If not:</b> on WSL2, run <code>sudo apt install usbutils</code> if <code>lsusb</code> is missing, and repeat <code>usbipd attach</code>. Try another USB port or cable.</p>
+  <div class="box">
+    <p>On many systems the scripts need permission to use the USB device. If a script stops with an access or permission error, run it with <code>sudo</code> in front, for example <code>sudo ~/ftdi/bin/python src/flasher/dump.py my_carby_backup.bin</code>.</p>
+  </div>
+</section>
+
+<!-- 5. Wiring -->
+<section>
+  <h2>Wiring</h2>
+  <div class="pair wiring">
+    <figure><img src="../images/wiring-carby-j1-annotated.jpg" alt="Header pins soldered to J1 with jumper wires attached"><figcaption>Header pins soldered to J1, jumper wires attached.</figcaption></figure>
+    <figure><img src="../images/wiring-ft232h-annotated.jpg" alt="FT232H with header on AD0 to AD7"><figcaption>FT232H with a header soldered on AD0 to AD7.</figcaption></figure>
+  </div>
+  <p class="caption-voice">Yes, that is my soldering. It is not pretty, but it worked, and if mine did, yours will too.</p>
+  <table>
+    <tr><th>Cable J1 pad</th><th>FT232H pin</th></tr>
+    <tr><td>GND</td><td>GND</td></tr>
+    <tr><td>CLK</td><td>AD0</td></tr>
+    <tr><td>MOSI</td><td>AD1</td></tr>
+    <tr><td>MISO</td><td>AD2</td></tr>
+    <tr><td>CS</td><td>AD3</td></tr>
+    <tr><td>FPGA pin 100 (PROG_B), held by hand during flash steps only</td><td>AD4</td></tr>
+  </table>
+  <div class="box">
+    <p><b>Do not connect +3.3V.</b> The cable is powered by the GameCube, so the console stays on during every step. Feeding 3.3V from the FT232H as well is not needed.</p>
+  </div>
+</section>
+
+<!-- 6. Step 1 -->
+<section>
+  <h2>Step 1: back up your firmware</h2>
+  <ol>
+    <li>Plug the cable into the GameCube and turn the console on.</li>
+    <li>Plug the FT232H into the computer (and attach it to WSL2 on Windows).</li>
+    <li>Run:
+      <pre>~/ftdi/bin/python src/flasher/dump.py my_carby_backup.bin</pre></li>
+    <li>When it says <code>Hold the AD4 wire tip on pin 100 and keep it there. Press Enter...</code>, touch the AD4 wire to FPGA pin 100, hold it steady, and press Enter.</li>
+    <li>Keep holding until the script finishes (it reads the whole chip twice).</li>
+  </ol>
+  <p><b>You should see:</b></p>
+  <pre>JEDEC ID: c22013
+Flash size: 4 Mbit
+Saved my_carby_backup.bin  sha256: d7e25e1a...</pre>
+  <p>Compare your SHA-256 with the original in this repository:</p>
+  <pre>cat firmware/original/SHA256SUMS</pre>
+  <p>The full value is <code style="font-size:9pt">d7e25e1af843aa424e5c740e0e00690f0429120f4630d0e75bdc3935e503f607</code>. A match means your cable is the same as the one documented here. <b>Keep your own dump safe either way</b>, for example copied to another drive.</p>
+  <p><b>If not:</b></p>
+  <ul>
+    <li><code>Flash not responding correctly</code>: check GND, CLK, MOSI, MISO and CS, check the console is on, and check the AD4 wire is on pin 100 (not its neighbor).</li>
+    <li><code>The two reads differ</code> or <code>Read was all blank</code>: nothing was saved. Hold the AD4 wire steadier and run it again.</li>
+  </ul>
+</section>
+
+<!-- 7. Step 2 -->
+<section>
+  <h2>Step 2: flash GCVideo 3.1</h2>
+  <ol>
+    <li>Same setup as step 1: console on, FT232H wired.</li>
+    <li>Run:
+      <pre>~/ftdi/bin/python src/flasher/flashbin.py firmware/gcvideo/carby_gcvideo31_final.bin main</pre></li>
+    <li>It prints the image's SHA-256, then asks: <code>[main layout] Hold the AD4 wire on pin 100 until DONE. Press Enter...</code></li>
+    <li>Hold the AD4 wire on pin 100 and press Enter. Keep holding through <code>Erasing...</code>, <code>Writing...</code> and <code>Verifying...</code>.</li>
+    <li>Let go when it prints <code>DONE - verified OK</code>.</li>
+  </ol>
+  <figure>
+    <img src="../images/fpga-pin100-annotated.jpg" style="width:3.2in" alt="Close-up of FPGA pin 100">
+    <figcaption>Pin 100 is the leftmost pin of the top row, next to pin 1.</figcaption>
+  </figure>
+  <p><b>Why hold pin 100?</b> Pin 100 is the FPGA's configuration reset (PROG_B). While it is held low, the FPGA stops running and lets go of the flash chip's wires, so the computer can write to the flash without the FPGA getting in the way.</p>
+  <p><b>If not:</b></p>
+  <ul>
+    <li><code>VERIFY FAILED - rerun</code>: do not power-cycle. Run the same command again.</li>
+    <li><code>Flash not responding (ID ...)</code> or <code>Flash still write-protected</code>: nothing was written. Check the wiring and the pin 100 contact, then run it again.</li>
+  </ul>
+</section>
+
+<!-- 8. Step 3 -->
+<section>
+  <h2>Step 3: first boot</h2>
+  <ol>
+    <li>Turn the GameCube off.</li>
+    <li>Disconnect the FT232H completely, including the AD4 wire. A wire left near pin 100 can reset the FPGA.</li>
+    <li>Connect the TV and turn the console on.</li>
+  </ol>
+  <p><b>You should see</b> the console's picture with correct colors. When the video mode changes (for example when a game starts), GCVideo shows a small resolution popup in the top right corner.</p>
+  <div class="pair results">
+    <figure><img src="../images/result-color-bars.jpg" alt="Color bars"><figcaption>240p Test Suite color bars.</figcaption></figure>
+    <figure><img src="../images/result-color-ramps.jpg" alt="Color ramps"><figcaption>Color ramps: smooth fades, no steps.</figcaption></figure>
+  </div>
+  <p><b>If not:</b></p>
+  <ul>
+    <li>Black screen: check that step 2 ended with <code>DONE - verified OK</code>, and flash again. If it still fails, go back to the original (page 10).</li>
+    <li>Rolling or diagonal garbage on a CRT: the game or app is outputting 480p. See page 10.</li>
+  </ul>
+</section>
+
+<!-- 9. Step 4 -->
+<section>
+  <h2>Step 4: set up the remote</h2>
+  <p>The Digital AV port does not carry the controller signal, so the GCVideo menu is opened with an IR remote. Remotes that use the NEC protocol work, which includes many TV and universal remotes.</p>
+  <ol>
+    <li>With a picture on screen, hold button BU1 on the board for about a second, until the <code>IR Remote key config</code> screen appears.</li>
+    <li>It asks for six keys in order: Up, Down, Left, Right, Enter, Back. Press the remote key you want for the highlighted one. <code>Ok</code> appears next to it.</li>
+    <li>If <code>Dupe</code> appears, that key is already used. Press a different one.</li>
+    <li>A short press of BU1 cancels without changing anything.</li>
+  </ol>
+  <p><b>You should see</b> the screen close after the sixth key. Press your Enter key: the GCVideo menu opens.</p>
+  <h3>Keep your changes</h3>
+  <p>In the menu, choose <b>Store Settings</b> to save. This also saves the remote keys. Without it, changes are lost at power-off.</p>
+  <h3>Useful settings</h3>
+  <ul>
+    <li><b>Advanced Settings, Chroma Interpolation:</b> turn it off for Game Boy Interface High-Fidelity edition.</li>
+    <li>The line doubler is off by default in this build, which is what a standard-definition CRT needs.</li>
+  </ul>
+  <p><b>If not:</b> if the setup screen never appears, hold BU1 longer. If keys do nothing, the remote may not use the NEC protocol: try another remote.</p>
+</section>
+
+<!-- 10. Going back and troubleshooting -->
+<section>
+  <h2>Going back and troubleshooting</h2>
+  <h3>Restore the original firmware</h3>
+  <p>Wire up as for flashing, console on, then:</p>
+  <pre>~/ftdi/bin/python src/flasher/restore.py firmware/original/carby_backup.bin</pre>
+  <p>Hold the AD4 wire on pin 100, press Enter, and keep holding until <code>DONE - verified OK. You can let go.</code> Then disconnect the FT232H and power-cycle. If it prints <code>VERIFY FAILED</code>, do not power-cycle; run it again.</p>
+  <p class="small"><code>restore.py</code> only writes the original image from this repository (it checks the SHA-256). If your own dump from step 1 differs from it, keep your dump safe and open an issue on the repository before restoring.</p>
+  <h3>Troubleshooting</h3>
+  <table>
+    <tr><th style="width:38%">Symptom</th><th>Fix</th></tr>
+    <tr><td>No change after flashing</td><td>Check that the last line was <code>DONE - verified OK</code>. If it was not, rewire CLK and MOSI and flash again.</td></tr>
+    <tr><td>Flashing seems to work but nothing changes</td><td>The flash chip ships write-protected, and it ignores writes silently. <code>flashbin.py</code> clears the protection first. Make sure that is the script you are using.</td></tr>
+    <tr><td>Screen flashes and resets during commands</td><td>The AD4 wire is still touching pin 100. Remove it when not flashing.</td></tr>
+    <tr><td>Diagonal or rolling garbage on a CRT</td><td>The game is outputting 480p, which a standard-definition CRT cannot show. Use 240p or 480i.</td></tr>
+    <tr><td>Strong flicker in Game Boy Player</td><td>That is 480i interlacing. Launch Game Boy Player in 240p from Swiss.</td></tr>
+    <tr><td>Black screen after using GCVideo's console updater</td><td>Do not run the official updater on this cable. Reflash step 2 over J1.</td></tr>
+  </table>
+</section>
+
+</body>
+</html>
