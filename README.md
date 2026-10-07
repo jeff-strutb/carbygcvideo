@@ -1,12 +1,15 @@
 # GCVideo 3.1 for the Carby Component cable
 
+> [!WARNING]
+> **Release withdrawn.** We discovered a banding issue with the current firmware. The release has been pulled while we correct it, and a new release will follow. Please don't flash the current build in the meantime.
+
 ![GCVideo Dual v3.1-crt menu over Swiss on a CRT, through the Carby Component](docs/images/result-gcvideo-about.jpg)
 
 ## What this is
 
 This is a GCVideo 3.1 firmware build for the Insurrection Industries Carby Component cable: the analog YPbPr version, with a board marked "GCAnalog 1.9". The repository also holds a backup of the original firmware, the full FPGA pin map, the build source, and a step-by-step [flashing guide (PDF)](docs/carby-component-gcvideo-3.1-flashing-guide.pdf).
 
-Download the firmware and the flashing guide from the [Releases page](https://github.com/jeff-strutb/carbygcvideo/releases).
+The firmware and the flashing guide will be posted on the [Releases page](https://github.com/jeff-strutb/carbygcvideo/releases) once the corrected build is ready.
 
 ## Background
 
