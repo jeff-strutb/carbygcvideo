@@ -1,6 +1,6 @@
 # GCVideo 3.1 for the Carby Component cable
 
-> [!NOTICE]
+> [!WARNING]
 > **Release withdrawn.** We discovered a banding issue with the current firmware. The release has been pulled while we correct it, and a new release will follow. Please don't flash the current build in the meantime.
 
 ![GCVideo Dual v3.1-crt menu over Swiss on a CRT, through the Carby Component](docs/images/result-gcvideo-about.jpg)
