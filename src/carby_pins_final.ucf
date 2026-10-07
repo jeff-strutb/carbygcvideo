@@ -39,8 +39,8 @@ NET "DVI_Blue[0]"  LOC = P83;
 NET "DVI_Blue[1]"  LOC = P84;
 
 # analog video output
-NET "DAC_Red[0]"   LOC = P34 | IOSTANDARD = LVCMOS33;
-NET "DAC_Red[1]"   LOC = P35 | IOSTANDARD = LVCMOS33;
+NET "DAC_Red[0]"   LOC = P50 | IOSTANDARD = LVCMOS33;
+NET "DAC_Red[1]"   LOC = P49 | IOSTANDARD = LVCMOS33;
 NET "DAC_Red[2]"   LOC = P44 | IOSTANDARD = LVCMOS33;
 NET "DAC_Red[3]"   LOC = P43 | IOSTANDARD = LVCMOS33;
 NET "DAC_Red[4]"   LOC = P41 | IOSTANDARD = LVCMOS33;
@@ -48,9 +48,9 @@ NET "DAC_Red[5]"   LOC = P40 | IOSTANDARD = LVCMOS33;
 NET "DAC_Red[6]"   LOC = P37 | IOSTANDARD = LVCMOS33;
 NET "DAC_Red[7]"   LOC = P36 | IOSTANDARD = LVCMOS33;
 
-NET "DAC_Green[0]" LOC = P50 | IOSTANDARD = LVCMOS33;
-NET "DAC_Green[1]" LOC = P49 | IOSTANDARD = LVCMOS33;
-NET "DAC_Green[2]" LOC = P33 | IOSTANDARD = LVCMOS33;
+NET "DAC_Green[0]" LOC = P33 | IOSTANDARD = LVCMOS33;
+NET "DAC_Green[1]" LOC = P34 | IOSTANDARD = LVCMOS33;
+NET "DAC_Green[2]" LOC = P35 | IOSTANDARD = LVCMOS33;
 NET "DAC_Green[3]" LOC = P32 | IOSTANDARD = LVCMOS33;
 NET "DAC_Green[4]" LOC = P28 | IOSTANDARD = LVCMOS33;
 NET "DAC_Green[5]" LOC = P20 | IOSTANDARD = LVCMOS33;
@@ -103,5 +103,5 @@ NET "LED"          LOC = P6 | IOSTANDARD = LVCMOS33;
 # analog mode input
 NET "ForceYPbPr"   LOC = P39 | IOSTANDARD = LVCMOS33 | PULLUP = TRUE;
 
-# Carby: spare constant-high output (DAC_PSave port), parked on P30. P70 is the DAC clock.
+# Spare constant-high output (GCVideo's DAC_PSave port), parked on unused pin P30. P70 is the DAC clock; the DAC's PSAVE input is not FPGA-driven.
 NET "DAC_PSave" LOC = P30 | IOSTANDARD = LVCMOS33;

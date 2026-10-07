@@ -10,4 +10,6 @@ Each script takes a command as its first argument (`build`, `flash`, and a read 
 
 **diag8.py** is an input activity monitor. Every FPGA pin becomes a pulled-up input, and the FPGA counts level changes on each. `diag8.py watch` asks you to press the board's button and use a remote at the cable, then names the pins that responded. This found the IR receiver (P82) and the button (P21).
 
+**diag9.py** settles the lowest color bits. It drives P33, P34, P35, P49 and P50 at 10, 30, 50, 70 and 90 percent duty, so each settles at a widely spaced average voltage. Five meter readings on the DAC (`diag9.py read`) identify the exact wiring of the lowest bits, and the script can correct the pin file automatically.
+
 **diag.py, diag2.py, diag3.py** are the earlier input-side tools: an internal logic analyzer that samples every candidate pin on the console clock (used for the video data, CSel, and audio pins), a check that runs GCVideo's own clock generator and video decoder on the measured pins, and blanking-flag statistics per data pin.

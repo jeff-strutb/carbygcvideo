@@ -44,6 +44,8 @@ Rather than probing 24 tiny DAC pins, a test firmware (`diag7.py`) drew a grid o
 
 How: the background could be changed over the FT232H between photos, so weak low-order bits could be seen against a suitable background.
 
+![Color bars on a CRT](images/result-color-bars.jpg)
+
 ## 8. The four lowest Pb bits were first on the wrong pins
 
 The first map put Pb (blue-difference) bits 0 to 3 on the wrong pins. The 240p Test Suite blue color ramp showed flat four-step plateaus instead of a smooth fade, the sign of low bits that are not doing their job. The pattern pointed to P9, P10, P12 and P13.
@@ -52,24 +54,22 @@ How: after moving those bits (`carby_pbfix.py`) the ramp is smooth.
 
 ![240p Test Suite color ramps on a CRT after the fix](images/result-color-ramps.jpg)
 
-## 9. The IR receiver and button were found by watching inputs
+## 9. Low brightness bits and gradient banding
+
+The first build placed brightness bits 1 and 2 on two of the red-difference pins, so smooth gradients only received the top five brightness bits and showed contour banding. A dark-background photo test showed that P35 and P34 change brightness, not red. A meter test (diag9) then gave the five candidate pins widely spaced signature voltages and confirmed the final order: brightness bits 0 to 2 on P33, P34, P35 and red-difference bits 0 and 1 on P50, P49. After the fix, gradients match a Retro-Bit Prism cable in the same scene.
+
+## 10. The IR receiver and button were found by watching inputs
 
 A test firmware (`diag8.py`) made every FPGA pin a pulled-up input and counted level changes on each. While it ran, the board's button was pressed and a remote was pointed at the cable. P82 changed with the remote (IR receiver U7) and P21 went low with the button (BU1, active low).
 
-## 10. There is no controller access
+## 11. There is no controller access
 
 GCVideo can normally open its menu with a controller button combo, by listening to the controller line. The Digital AV port does not carry the controller line, so no cable that plugs into it can do this.
 
 How: the original firmware does not respond to the L+R+X+Y combo either. PadData is assigned to P7 and pulled down so it reads as idle. The menu is opened with an IR remote instead.
 
-## 11. Video modes are the console's
+## 12. Video modes are the console's
 
 GCVideo passes the console's video mode through. A 15 kHz CRT (a standard-definition TV) cannot show 480p, and a 480p signal on such a TV shows as diagonal or rolling garbage. Game Boy Player in 480i flickers strongly because of interlacing.
 
 How: tested on a CRT. Launch Game Boy Player and Game Boy Interface in 240p from Swiss, and set games to 240p or 480i.
-
-## Six color bits are inferred
-
-Y bits 0 to 3 and Pr bits 0 and 1 are too faint to read reliably from photos. They were placed by following the pattern of the measured bits next to them. Color bars and ramps show no visible error, but these six bits have not been directly measured.
-
-![Color bars on a CRT with this firmware](images/result-color-bars.jpg)

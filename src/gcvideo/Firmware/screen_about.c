@@ -92,7 +92,7 @@ static void about_draw(menu_t *menu) {
 
   } else {
     if (DUAL_OUT) {
-      osd_putsat(11 + (23 - (14 + ver_len)) / 2, 10, "GCVideo Dual v" VERSION);
+      osd_putsat(11 + (23 - (8 + ver_len)) / 2, 10, "GCVideo " VERSION); // Carby name
     } else { //                                       12345678901234
       osd_putsat(11 + (23 - (13 + ver_len)) / 2, 10, "GCVideo DVI v" VERSION);
     }

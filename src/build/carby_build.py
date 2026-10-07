@@ -17,6 +17,7 @@ What it builds (on top of the GCVideo 3.1 source tree):
   * main firmware: automatic VSync/field flag detection on P61/P62
   * composite sync driven on the spare sync and LED outputs (P3 to P6)
   * main firmware: debug read-out on the SPI header (read with dbgread.py)
+  * About screen reads "GCVideo 3.1" instead of "GCVideo Dual v3.1"
 """
 import os, sys, subprocess, shutil, hashlib
 H   = os.path.abspath(os.path.expanduser(sys.argv[1] if len(sys.argv) > 1 else "~/gcvideo"))
@@ -36,7 +37,7 @@ up = os.path.join(G, "constraints-dualgc.ucf"); u = open(up).read()
 must('NET "CSel"         LOC = P73;' in u and 'NET "VData[0]"     LOC = P72;' in u,
      "Carby pin map not found in constraints-dualgc.ucf (run carby_pins.py first)")
 if 'NET "DAC_PSave"' not in u:
-    u += '\n# Carby: spare constant-high output (DAC_PSave port), parked on P30. P70 is the DAC clock.\nNET "DAC_PSave" LOC = P30 | IOSTANDARD = LVCMOS33;\n'
+    u += '\n# Spare constant-high output (GCVideo\'s DAC_PSave port), parked on unused pin P30. P70 is the DAC clock; the DAC\'s PSAVE input is not FPGA-driven.\nNET "DAC_PSave" LOC = P30 | IOSTANDARD = LVCMOS33;\n'
     open(up, "w").write(u)
 print("ok  pin map present, DAC_PSave parked on P30")
 
@@ -51,6 +52,11 @@ p = os.path.join(FW, "flasher.c"); s = open(p).read()
 s2 = s.replace("if (!(IRRX->pulsedata & IRRX_BUTTON)) {", "if (0) { // Carby: IR button check disabled", 1)
 must("Carby: IR button check disabled" in s2, "could not disable IR button check in flasher.c")
 open(p, "w").write(s2); print("ok  recovery-stage IR check disabled")
+p = os.path.join(FW, "screen_about.c"); s = open(p).read()
+s2 = s.replace('osd_putsat(11 + (23 - (14 + ver_len)) / 2, 10, "GCVideo Dual v" VERSION);',
+               'osd_putsat(11 + (23 - (8 + ver_len)) / 2, 10, "GCVideo " VERSION); // Carby name')
+must("// Carby name" in s2, "could not change the About screen name in screen_about.c")
+open(p, "w").write(s2); print("ok  About screen shows 'GCVideo 3.1'")
 
 # ---- 3. VHDL: reset to clean 3.1, then patch -----------------------------------------
 # A tree that already has the Carby VHDL changes (such as src/gcvideo in this
@@ -201,7 +207,7 @@ patch("toplevel_gcdual.vhd", [
   "    Flash_COPI : inout std_logic;\n    Flash_CIPO : inout std_logic;\n    Flash_SCK  : inout std_logic;\n"),
  ("    -- audio out\n    SPDIF_Out  : out std_logic;\n\n", ""),
  ("    ForceYPbPr : in    std_logic\n  );",
-  "    ForceYPbPr : in    std_logic;\n\n    -- Carby: DAC power-save control (high = DAC on)\n    DAC_PSave  : out   std_logic\n  );"),
+  "    ForceYPbPr : in    std_logic;\n\n    -- Carby: spare constant-high output (parked on P30)\n    DAC_PSave  : out   std_logic\n  );"),
  ("begin\n\n  swap_red", DECL + "\n  swap_red"),
  ("    VData       => VData,\n    CSel        => CSel,\n", "    VData       => dp_vdata,\n    CSel        => dp_csel,\n"),
  ("    Flash_COPI  => Flash_COPI,\n    Flash_CIPO  => Flash_CIPO,\n    Flash_SCK   => Flash_SCK,\n    Flash_SEL   => Flash_SEL,\n",

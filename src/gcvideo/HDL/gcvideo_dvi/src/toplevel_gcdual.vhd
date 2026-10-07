@@ -96,7 +96,7 @@ entity toplevel_gcdual is
     -- analog mode fallback select
     ForceYPbPr : in    std_logic;
 
-    -- Carby: DAC power-save control (high = DAC on)
+    -- Carby: spare constant-high output (parked on P30)
     DAC_PSave  : out   std_logic
   );
 end toplevel_gcdual;
