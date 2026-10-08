@@ -103,5 +103,5 @@ NET "LED"          LOC = P6 | IOSTANDARD = LVCMOS33;
 # analog mode input
 NET "ForceYPbPr"   LOC = P39 | IOSTANDARD = LVCMOS33 | PULLUP = TRUE;
 
-# Carby: DAC PSAVE is wired to P70
+# Spare constant-high output (GCVideo's DAC_PSave port), parked on unused pin P30. P70 is the DAC clock; the DAC's PSAVE input is not FPGA-driven.
 NET "DAC_PSave" LOC = P30 | IOSTANDARD = LVCMOS33;
