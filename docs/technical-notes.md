@@ -12,7 +12,7 @@ How: the backup ([firmware/original/carby_backup.bin](../firmware/original/carby
 
 The flash's status register reads `0x1C` out of the box. Those block-protect bits make the chip ignore erase and write commands without reporting an error, so a flasher appears to run and the old firmware stays.
 
-How: reading the flash's status register (command `0x05`) returned `0x1C`. `flashbin.py` and `restore.py` now write `0x00` to the status register before erasing, and `flashbin.py` checks that the bits cleared.
+How: reading the flash's status register (command `0x05`) returned `0x1C`. `flashfull.py`, `flashbin.py` and `restore.py` now write `0x00` to the status register before erasing, and `flashfull.py` and `flashbin.py` check that the bits cleared.
 
 ## 3. Insurrection's "Carby 3.1" download does not fit this board
 
@@ -20,11 +20,9 @@ The "Carby 3.1" firmware Insurrection published is the GCVideo Shuriken v3 build
 
 How: GCVideo images carry a four-letter hardware ID. The download's ID is SH3G, which upstream GCVideo uses for the Shuriken v3 target.
 
-## 4. Main-image layout
+## 4. Flash layout and update tool
 
-A normal GCVideo flash image starts with a small recovery stage, which checks the IR button and then loads the main firmware stored further up in the flash. On this board the recovery stage hung. The pin GCDual uses for the IR button (P82) is wired to the IR receiver on the Carby, so the button check read the receiver instead.
-
-How: with the full image (recovery stage plus main firmware) flashed, the main firmware never started. The fix was to flash the main firmware on its own at offset 0, where the FPGA loads it directly at power-on. That is the `main` mode of `flashbin.py`, and it is how the released image is installed.
+The firmware is GCVideo's standard two-stage layout: the update tool at offset 0 with its tag at 0x2FFE8, and the main firmware at 0x30000. The hardware ID is `CBCG` (Carby Component), so GCVideo's update tool only accepts firmware built for this cable. The update tool opens from About, Update Firmware, or by holding BU1 (the IR config button) while powering on. It also starts on its own if the main firmware is missing or damaged, so a failed update can be recovered without the FT232H.
 
 ## 5. P70 is the DAC clock, not DAC power-save
 
@@ -56,17 +54,15 @@ How: after moving those bits (`carby_pbfix.py`) the ramp is smooth.
 
 ## 9. Low brightness bits and gradient banding
 
-The first build placed brightness bits 1 and 2 on two of the red-difference pins, so smooth gradients only received the top five brightness bits and showed contour banding. A dark-background photo test showed that P35 and P34 change brightness, not red. A meter test (diag9) then gave the five candidate pins widely spaced signature voltages and confirmed the final order: brightness bits 0 to 2 on P33, P34, P35 and red-difference bits 0 and 1 on P50, P49. After the fix, gradients match a Retro-Bit Prism cable in the same scene.
+The first build placed brightness bits 1 and 2 on two of the red-difference pins, so smooth gradients only received the top five brightness bits and showed contour banding. A dark-background photo test showed that P35 and P34 change brightness, not red. A meter test (diag9) then gave the five candidate pins widely spaced signature voltages and confirmed the final order: brightness bits 0 to 2 on P33, P34, P35 and red-difference bits 0 and 1 on P50, P49. A second meter test (diag10) confirmed blue-difference bits 0 to 3 on P13, P12, P10, P9. After the fix, gradients match a Retro-Bit Prism cable in the same scene.
 
 ## 10. The IR receiver and button were found by watching inputs
 
 A test firmware (`diag8.py`) made every FPGA pin a pulled-up input and counted level changes on each. While it ran, the board's button was pressed and a remote was pointed at the cable. P82 changed with the remote (IR receiver U7) and P21 went low with the button (BU1, active low).
 
-## 11. There is no controller access
+## 11. Menu access
 
-GCVideo can normally open its menu with a controller button combo, by listening to the controller line. The Digital AV port does not carry the controller line, so no cable that plugs into it can do this.
-
-How: the original firmware does not respond to the L+R+X+Y combo either. PadData is assigned to P7 and pulled down so it reads as idle. The menu is opened with an IR remote instead.
+The GCVideo menu opens with the IR remote. The controller button combination used by internal GCVideo installs cannot work on any cable that plugs into the Digital AV port, because that port does not carry the controller signal. Internal installs read it through an extra wire. The original Carby firmware does not respond to the combination either.
 
 ## 12. Video modes are the console's
 

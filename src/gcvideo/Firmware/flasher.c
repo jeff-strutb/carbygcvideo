@@ -569,7 +569,7 @@ void run_mainloop(void) {
     }
 
     if (flashstate == STATE_OK) {
-      if (0) { // Carby: IR button check disabled
+      if (!(IRRX->pulsedata & IRRX_BUTTON)) {
         flashstate = STATE_FORCEFLASHER;
 
         VIDEOIF->osd_bg = 0;

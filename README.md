@@ -43,15 +43,19 @@ More detail with photos: [docs/hardware.md](docs/hardware.md), [docs/pinout.md](
 - **486-to-480 line cropping for Game Boy Interface** (3.1).
 - **CRT-friendly defaults**: this build ships with the line doubler off, and with full source, so future GCVideo releases can be built for this cable.
 - **Full 8-bit color on every channel**, verified pin by pin, with smooth gradients.
+- **Includes GCVideo's update tool and recovery mode.\***
 
 Sources: [GCVideo releases and changelog](https://github.com/ikorb/gcvideo/releases); GC-Forever wiki, [Game Boy Interface High-Fidelity Edition](https://www.gc-forever.com/wiki/index.php?title=Game_Boy_Interface%2FHigh-Fidelity_Edition) and [Game Boy Interface Standard Edition](https://www.gc-forever.com/wiki/index.php?title=Game_Boy_Interface%2FStandard_Edition); Extrems on GCVideo chroma upsampling in the shmups.system11.org thread ["Cloning the Gamecube component cable"](https://shmups.system11.org/viewtopic.php?f=6&t=51450&start=1800).
 
 ### Known limitations
 
-- **No controller button combo for the menu.** The Digital AV port does not carry the controller signal, so no plug-in cable can read the controller. The original firmware cannot either (tested). Open the menu with an IR remote that uses the NEC protocol, set up by holding BU1.
-- **Future updates need the same SPI flasher.** This build is flashed as a single main image, without GCVideo's in-console update stage.
+- **The menu opens with the IR remote only.** The controller button combination needs a wire inside the console, which a Digital AV port cable cannot have. Remotes that use the NEC protocol work; set one up by holding BU1.
+- **A console updater (.dol) for this cable has not been published yet.** Updates are flashed with the FT232H as described in the guide.
 - **480p passes through unchanged**, so it only shows on a screen that accepts 480p. On a standard-definition CRT, set games and Game Boy Interface to 240p or 480i.
-- **Do not run GCVideo's official console updater** on this cable. This build keeps GCDual's hardware ID, so the updater could install the stock GCDual image and give a black screen. See [src/README.md](src/README.md).
+
+Tested: settings save and persist after a power cycle, IR remote and menu, the console's progressive-scan prompt, and 240p and 480i output on a CRT. Not yet tested: 480p, 360p and PAL output, and the update tool.\*
+
+\* Not yet fully tested on hardware.
 
 ## How to upgrade
 
@@ -64,7 +68,13 @@ The [flashing guide (PDF)](docs/carby-component-gcvideo-3.1-flashing-guide.pdf) 
 1. Back up your current firmware with `src/flasher/dump.py`.
 2. Wire the FT232H to the J1 header.
 3. Hold the FPGA in reset by touching a wire to FPGA pin 100 during each flash step.
-4. Flash `firmware/gcvideo/carby_gcvideo31_final.bin` with `src/flasher/flashbin.py`.
+4. Flash `firmware/gcvideo/carby_gcvideo31_full.bin` (SHA-256 `427238cb5e05a72854eb1091bcff001c50b1ae15868636f57319a88949d5c296`) with `src/flasher/flashfull.py`:
+
+   ```bash
+   ~/ftdi/bin/python src/flasher/flashfull.py firmware/gcvideo/carby_gcvideo31_full.bin
+   ```
+
+   Settings reset to defaults the first time this image starts.
 5. Wait for the verify message.
 6. Disconnect the FT232H and power-cycle the console.
 

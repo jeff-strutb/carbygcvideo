@@ -34,9 +34,9 @@
 
   <h3>Files from this repository</h3>
   <ul>
-    <li><code>firmware/gcvideo/carby_gcvideo31_final.bin</code>: the GCVideo 3.1 firmware.</li>
+    <li><code>firmware/gcvideo/carby_gcvideo31_full.bin</code>: the GCVideo 3.1 firmware.</li>
     <li><code>firmware/original/carby_backup.bin</code>: the original firmware, for going back.</li>
-    <li><code>src/flasher/</code>: the scripts <code>dump.py</code>, <code>flashbin.py</code> and <code>restore.py</code>.</li>
+    <li><code>src/flasher/</code>: the scripts <code>dump.py</code>, <code>flashfull.py</code> and <code>restore.py</code>.</li>
   </ul>
 
   <div class="box">
@@ -138,11 +138,12 @@ Saved my_carby_backup.bin  sha256: d7e25e1a...</pre>
   <ol>
     <li>Same setup as step 1: console on, FT232H wired.</li>
     <li>Run:
-      <pre>~/ftdi/bin/python src/flasher/flashbin.py firmware/gcvideo/carby_gcvideo31_final.bin main</pre></li>
-    <li>It prints the image's SHA-256, then asks: <code>[main layout] Hold the AD4 wire on pin 100 until DONE. Press Enter...</code></li>
-    <li>Hold the AD4 wire on pin 100 and press Enter. Keep holding through <code>Erasing...</code>, <code>Writing...</code> and <code>Verifying...</code>.</li>
+      <pre>~/ftdi/bin/python src/flasher/flashfull.py firmware/gcvideo/carby_gcvideo31_full.bin</pre></li>
+    <li>It checks the file first (size, update-tool tag, hardware ID CBCG) and prints <code>Complete image: version 3.1-crt, hardware ID CBCG, 346144 bytes</code>. Then it asks: <code>Hold the AD4 wire on pin 100 until DONE. Press Enter...</code></li>
+    <li>Hold the AD4 wire on pin 100 and press Enter. Keep holding through <code>Erasing...</code> and <code>Writing...</code>. The script then checks every byte it wrote.</li>
     <li>Let go when it prints <code>DONE - verified OK</code>.</li>
   </ol>
+  <p>Settings reset to defaults the first time this image starts.</p>
   <figure>
     <img src="../images/fpga-pin100-annotated.jpg" style="width:3.2in" alt="Close-up of FPGA pin 100">
     <figcaption>Pin 100 is the leftmost pin of the top row, next to pin 1.</figcaption>
@@ -151,7 +152,7 @@ Saved my_carby_backup.bin  sha256: d7e25e1a...</pre>
   <p><b>If not:</b></p>
   <ul>
     <li><code>VERIFY FAILED - rerun</code>: do not power-cycle. Run the same command again.</li>
-    <li><code>Flash not responding (ID ...)</code> or <code>Flash still write-protected</code>: nothing was written. Check the wiring and the pin 100 contact, then run it again.</li>
+    <li><code>Flash not responding (ID ...)</code> or <code>Flash write-protected</code>: nothing was written. Check the wiring and the pin 100 contact, then run it again.</li>
   </ul>
 </section>
 
@@ -208,11 +209,10 @@ Saved my_carby_backup.bin  sha256: d7e25e1a...</pre>
   <table>
     <tr><th style="width:38%">Symptom</th><th>Fix</th></tr>
     <tr><td>No change after flashing</td><td>Check that the last line was <code>DONE - verified OK</code>. If it was not, rewire CLK and MOSI and flash again.</td></tr>
-    <tr><td>Flashing seems to work but nothing changes</td><td>The flash chip ships write-protected, and it ignores writes silently. <code>flashbin.py</code> clears the protection first. Make sure that is the script you are using.</td></tr>
+    <tr><td>Flashing seems to work but nothing changes</td><td>The flash chip ships write-protected, and it ignores writes silently. <code>flashfull.py</code> clears the protection first. Make sure that is the script you are using.</td></tr>
     <tr><td>Screen flashes and resets during commands</td><td>The AD4 wire is still touching pin 100. Remove it when not flashing.</td></tr>
     <tr><td>Diagonal or rolling garbage on a CRT</td><td>The game is outputting 480p, which a standard-definition CRT cannot show. Use 240p or 480i.</td></tr>
     <tr><td>Strong flicker in Game Boy Player</td><td>That is 480i interlacing. Launch Game Boy Player in 240p from Swiss.</td></tr>
-    <tr><td>Black screen after using GCVideo's console updater</td><td>Do not run the official updater on this cable. Reflash step 2 over J1.</td></tr>
   </table>
 </section>
 

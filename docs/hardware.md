@@ -40,8 +40,8 @@ J1 runs along the top edge in this view. The pin names are printed only on the F
 
 ## The flash chip
 
-- JEDEC ID: `C2 20 13` (Macronix, 4 Mbit). `flashbin.py` and `restore.py` check for this ID before writing anything.
-- It shipped with its block-protect bits set: status register `0x1C`. With these bits set, erase and write commands are silently ignored. Nothing reports an error, the old firmware simply stays. `flashbin.py` and `restore.py` write `0x00` to the status register before erasing, and `flashbin.py` stops if the bits are still set afterward.
+- JEDEC ID: `C2 20 13` (Macronix, 4 Mbit). `flashfull.py`, `flashbin.py` and `restore.py` check for this ID before writing anything.
+- It shipped with its block-protect bits set: status register `0x1C`. With these bits set, erase and write commands are silently ignored. Nothing reports an error, the old firmware simply stays. `flashfull.py`, `flashbin.py` and `restore.py` write `0x00` to the status register before erasing, and `flashfull.py` and `flashbin.py` stop if the bits are still set afterward.
 
 ## Power
 

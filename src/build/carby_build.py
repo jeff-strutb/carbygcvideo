@@ -4,23 +4,21 @@ carby_build.py - prepare and build GCVideo 3.1 for the Carby Component (GCAnalog
 
 Run from a shell where ISE and the ZPU compiler are on PATH:
     source /opt/Xilinx/14.7/ISE_DS/settings64.sh ; export PATH=~/zpu/bin:$PATH
-    python3 carby_build.py [GCVIDEO_TREE]
+    python3 ~/carby_build.py
 
-GCVIDEO_TREE is the GCVideo 3.1 source tree (default: ~/gcvideo). In this
-repository that is src/gcvideo, which already contains every change below.
-
-What it builds (on top of the GCVideo 3.1 source tree):
+What it builds (on top of the GCVideo 3.1 source in ~/gcvideo):
   * Carby pin map (measured on the board)            - checked in the .ucf files
-  * DAC_PSave: spare constant-high output, parked on P30 (P70 is the DAC clock)
+  * spare constant-high output (DAC_PSave port) on unused pin P30; the DAC clock is on P70
   * line doubling off by default (240p/288p/480i/576i) - for a 15 kHz CRT
-  * recovery stage: IR-button check disabled
+  * full two-stage image (flasher + main); recovery button check on BU1 (P21)
+  * own hardware ID CBCG, so GCVideo's GCDual updates cannot install on this cable
   * main firmware: automatic VSync/field flag detection on P61/P62
-  * composite sync driven on the spare sync and LED outputs (P3 to P6)
+  * composite sync also driven on GCVideo's spare sync/LED outputs (parked on P3 to P6)
   * main firmware: debug read-out on the SPI header (read with dbgread.py)
   * About screen reads "GCVideo 3.1" instead of "GCVideo Dual v3.1"
 """
 import os, sys, subprocess, shutil, hashlib
-H   = os.path.abspath(os.path.expanduser(sys.argv[1] if len(sys.argv) > 1 else "~/gcvideo"))
+H   = os.path.expanduser("~/gcvideo")
 G   = os.path.join(H, "HDL/gcvideo_dvi/src")
 FW  = os.path.join(H, "Firmware")
 OUT = os.path.join(H, "HDL/gcvideo_dvi/build/gcvideo-dvi-dual-gc-3.1-crt-spirom-complete.bin")
@@ -39,7 +37,7 @@ must('NET "CSel"         LOC = P73;' in u and 'NET "VData[0]"     LOC = P72;' in
 if 'NET "DAC_PSave"' not in u:
     u += '\n# Spare constant-high output (GCVideo\'s DAC_PSave port), parked on unused pin P30. P70 is the DAC clock; the DAC\'s PSAVE input is not FPGA-driven.\nNET "DAC_PSave" LOC = P30 | IOSTANDARD = LVCMOS33;\n'
     open(up, "w").write(u)
-print("ok  pin map present, DAC_PSave parked on P30")
+print("ok  pin map present, spare DAC_PSave output on P30")
 
 # ---- 2. firmware C changes (idempotent) ---------------------------------------------
 p = os.path.join(FW, "settings-main.c"); s = open(p).read()
@@ -49,9 +47,16 @@ s2 = s2.replace("video_settings[VIDMODE_288p] = VIDEOIF_SET_LD_ENABLE;", "video_
 must("video_settings[VIDMODE_240p] = 0;" in s2, "could not set line-doubling defaults in settings-main.c")
 open(p, "w").write(s2); print("ok  line doubling off by default")
 p = os.path.join(FW, "flasher.c"); s = open(p).read()
-s2 = s.replace("if (!(IRRX->pulsedata & IRRX_BUTTON)) {", "if (0) { // Carby: IR button check disabled", 1)
-must("Carby: IR button check disabled" in s2, "could not disable IR button check in flasher.c")
-open(p, "w").write(s2); print("ok  recovery-stage IR check disabled")
+# recovery button check stays ON (BU1 is on P21 with a pull-up); undo the old workaround if present
+s2 = s.replace("if (0) { // Carby: IR button check disabled", "if (!(IRRX->pulsedata & IRRX_BUTTON)) {")
+must(s2.count("if (!(IRRX->pulsedata & IRRX_BUTTON)) {") == 1 and "Carby: IR button check disabled" not in s2,
+     "flasher.c is not in the expected state (recovery button check)")
+open(p, "w").write(s2); print("ok  recovery button check enabled (hold BU1 at power-on for recovery)")
+mk = os.path.join(H, "HDL/gcvideo_dvi/Makefile"); s = open(mk).read()
+s2 = s.replace("  # GCDU\n  HWID     := 0x47434455\n  TOPLEVEL := toplevel_gcdual",
+               "  # CBCG (Carby Component)\n  HWID     := 0x43424347\n  TOPLEVEL := toplevel_gcdual")
+must("HWID     := 0x43424347" in s2, "could not set the hardware ID in HDL/gcvideo_dvi/Makefile")
+open(mk, "w").write(s2); print("ok  hardware ID CBCG (GCVideo's GCDual updates will not install on this cable)")
 p = os.path.join(FW, "screen_about.c"); s = open(p).read()
 s2 = s.replace('osd_putsat(11 + (23 - (14 + ver_len)) / 2, 10, "GCVideo Dual v" VERSION);',
                'osd_putsat(11 + (23 - (8 + ver_len)) / 2, 10, "GCVideo " VERSION); // Carby name')
@@ -59,18 +64,10 @@ must("// Carby name" in s2, "could not change the About screen name in screen_ab
 open(p, "w").write(s2); print("ok  About screen shows 'GCVideo 3.1'")
 
 # ---- 3. VHDL: reset to clean 3.1, then patch -----------------------------------------
-# A tree that already has the Carby VHDL changes (such as src/gcvideo in this
-# repository) is built as it is. Otherwise the three files are reset with git
-# and patched.
-VHDL_DONE = ("-- Carby" in open(os.path.join(G, "toplevel_gcdual.vhd")).read() and
-             "DbgLocked" in open(os.path.join(G, "datapipe.vhd")).read() and
-             "DbgLocked" in open(os.path.join(G, "component_defs.vhd")).read())
-if not VHDL_DONE:
-  for f in ("toplevel_gcdual.vhd", "datapipe.vhd", "component_defs.vhd"):
+for f in ("toplevel_gcdual.vhd", "datapipe.vhd", "component_defs.vhd"):
     subprocess.check_call(["git", "checkout", "--", f], cwd=G)
 
 def patch(name, pairs):
-    if VHDL_DONE: return
     p = os.path.join(G, name); s = open(p).read()
     for a, b in pairs:
         must(s.count(a) == 1, f"{name}: anchor not found: {a[:70]!r}")
@@ -81,13 +78,12 @@ patch("datapipe.vhd", [
  ("    ForceYPbPr : in  std_logic;\n", "    ForceYPbPr : in  std_logic;\n    DbgLocked  : out std_logic;\n"),
  ("  Inst_ClockGen: ClockGen", "  DbgLocked <= clock_locked;\n\n  Inst_ClockGen: ClockGen"),
 ])
-if not VHDL_DONE:
-  cd = open(os.path.join(G, "component_defs.vhd")).read()
-  anchor = "      ForceYPbPr : in  std_logic := '1'; -- default: Not forced\n"
-  i = cd.lower().find("component datapipe"); j = cd.find(anchor, i)
-  must(i >= 0 and j >= 0, "component_defs.vhd: Datapipe port anchor not found")
-  cd = cd[:j] + anchor + "      DbgLocked  : out std_logic;\n" + cd[j + len(anchor):]
-  open(os.path.join(G, "component_defs.vhd"), "w").write(cd)
+cd = open(os.path.join(G, "component_defs.vhd")).read()
+anchor = "      ForceYPbPr : in  std_logic := '1'; -- default: Not forced\n"
+i = cd.lower().find("component datapipe"); j = cd.find(anchor, i)
+must(i >= 0 and j >= 0, "component_defs.vhd: Datapipe port anchor not found")
+cd = cd[:j] + anchor + "      DbgLocked  : out std_logic;\n" + cd[j + len(anchor):]
+open(os.path.join(G, "component_defs.vhd"), "w").write(cd)
 
 DECL = """  -- Carby
   signal f_copi, f_cipo, f_sck, f_sel, dac_clk_i, dbg_locked : std_logic;
@@ -222,8 +218,7 @@ patch("toplevel_gcdual.vhd", [
  ("  LED <= heartbeat_vsync;", "  LED <= csync_i;"),
  ("\nend Behavioral;", BODY),
 ])
-print("ok  VHDL " + ("already has the Carby changes" if VHDL_DONE else "prepared") +
-      " (DAC_PSave, VSync/field auto-detect, composite sync on spare outputs, debug read-out)")
+print("ok  VHDL prepared (PSAVE, VSync/field auto-detect, composite sync on the spare sync outputs, debug read-out)")
 
 # ---- 4. build -----------------------------------------------------------------------
 hd = os.path.join(H, "HDL/gcvideo_dvi")
@@ -236,3 +231,4 @@ if not os.path.exists(OUT):
 b = open(OUT, "rb").read()
 print("BUILD OK:", OUT)
 print("SHA-256:", hashlib.sha256(b).hexdigest())
+print("Flash the WHOLE image (flasher + main):  sudo ~/ftdi/bin/python ~/flashfull.py " + OUT)

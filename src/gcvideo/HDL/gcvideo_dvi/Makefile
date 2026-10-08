@@ -74,8 +74,8 @@ else ifeq ($(TARGET),shuriken-v3-wii)
   BOARD    := shuriken-v3
   CONSOLE  := WII
 else ifeq ($(TARGET),dual-gc)
-  # GCDU
-  HWID     := 0x47434455
+  # CBCG (Carby Component)
+  HWID     := 0x43424347
   TOPLEVEL := toplevel_gcdual
   BOARD    := dualgc
   CONSOLE  := GC
