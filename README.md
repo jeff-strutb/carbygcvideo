@@ -36,7 +36,6 @@ More detail with photos: [docs/hardware.md](docs/hardware.md), [docs/pinout.md](
 - **Chroma interpolation can be turned off** (Advanced Settings). Color in this video signal is sent at half the horizontal resolution, and GCVideo 2.4d-2 and earlier always blend (interpolate) the color samples. Nintendo's own component cable repeats each color sample instead, and Game Boy Interface High-Fidelity edition gives the most accurate color edges with interpolation off.
 - **Better handling of homebrew and unusual video modes**: non-standard mode detection with automatic processing bypass (3.0).
 - **Automatic image centering**, with an optional image shift (3.0).
-- **A workaround for the analog component output signal range** (3.0).
 - **An advanced options menu** for turning off individual processing steps, and **faster startup** (3.0).
 - **A menu entry to set up IR remote buttons** (3.0e).
 - **Less screen blanking during menu transitions** in some games, for example Eternal Darkness (3.1).
